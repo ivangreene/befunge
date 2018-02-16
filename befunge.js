@@ -168,8 +168,10 @@ function befunge(prog, rs, ws, opts) {
             break;
           case '@':
             running = false;
+            if (!opts.noDestroy) {
+              ws.destroy();
+            }
             rs.end();
-            ws.destroy();
             //break rtLoop;
             break;
           case 'g':

@@ -8,4 +8,4 @@ let programs = process.argv.slice(2);
 
 for (let i = 0; i < programs.length; i++)
   befunge(fs.readFileSync(programs[i], 'utf8'),
-    process.stdin, process.stdout);
+    process.stdin, process.stdout, { noDestroy: true });
