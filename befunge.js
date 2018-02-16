@@ -12,6 +12,8 @@ function befunge(prog, rs, ws, opts) {
     opts.parsed = () => {};
   if (typeof opts.position !== 'function')
     opts.position = () => {};
+  if (typeof opts.stack !== 'function')
+    opts.stack = () => {};
 //  if (typeof opts.step !== 'function')
 //    opts.step = (next) => next();
 
@@ -20,21 +22,28 @@ function befunge(prog, rs, ws, opts) {
   opts.parsed(code);
 
   let stack = {
-    pop() {
-      return _stack.pop() || 0;
+    pop(send) {
+      let popped = _stack.pop() || 0;
+      if (!send)
+        opts.stack(_stack);
+      return popped;
     },
-    push(item) {
+    push(item, send) {
       _stack.push(item);
+      if (!send)
+        opts.stack(_stack);
     },
     swap() {
-      let temp = _stack[_stack.length-1];
-      _stack[_stack.length-1] = _stack[_stack.length-2];
-      _stack[_stack.length-2] = temp;
+      let one = stack.pop(true);
+      let two = stack.pop(true);
+      _stack.push(one, two);
+      opts.stack(_stack);
     },
     dup() {
-      let item = stack.pop();
+      let item = stack.pop(true);
       _stack.push(item);
       _stack.push(item);
+      opts.stack(_stack);
     }
   };
 
