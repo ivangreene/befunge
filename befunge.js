@@ -67,7 +67,9 @@ function befunge(prog, rs, ws, opts) {
   }
 
   function putCode(x, y, v) {
-    code[y][x] = v;
+    code[y] = code[y] || [];
+    code[y][x] = String.fromCharCode(v);
+    opts.parsed(code);
   }
 
   let direction = 'e',
@@ -177,12 +179,12 @@ function befunge(prog, rs, ws, opts) {
           case 'g':
             gy = stack.pop();
             gx = stack.pop();
-            stack.push(codeAt(gx, gy));
+            stack.push((codeAt(gx, gy) || ' ').charCodeAt(0));
             break;
           case 'p':
             gy = stack.pop();
             gx = stack.pop();
-            codePut(gx, gy, stack.pop());
+            putCode(gx, gy, stack.pop());
             break;
           case '&':
             readint = true;
