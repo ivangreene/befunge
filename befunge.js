@@ -5,8 +5,19 @@ function randomDirection() {
   return directions[Math.floor(Math.random() * 4)];
 }
 
-function befunge(prog, rs, ws) {
+function befunge(prog, rs, ws, opts) {
+  opts = opts || {};
+
+  if (typeof opts.parsed !== 'function')
+    opts.parsed = () => {};
+  if (typeof opts.position !== 'function')
+    opts.position = () => {};
+//  if (typeof opts.step !== 'function')
+//    opts.step = (next) => next();
+
   let code = prog.split('\n').map(line => line.split(''));
+
+  opts.parsed(code);
 
   let stack = {
     pop() {
@@ -60,8 +71,10 @@ function befunge(prog, rs, ws) {
 
   let one, two;
 
-  function runtimeLoop() {
-    rtLoop: while (running && !paused) {
+  let runtimeLoop = () => {
+    while (running && !paused) {
+    // if (running && !paused) {
+      opts.position(x, y);
       if (stringMode) {
         if (codeAt(x, y) === '"') {
           stringMode = false;
@@ -147,7 +160,9 @@ function befunge(prog, rs, ws) {
           case '@':
             running = false;
             rs.end();
-            break rtLoop;
+            ws.destroy();
+            //break rtLoop;
+            break;
           case 'g':
             gy = stack.pop();
             gx = stack.pop();
@@ -168,34 +183,38 @@ function befunge(prog, rs, ws) {
             break;
         }
       }
-      let inc = bridge ? 2 : 1;
-      bridge = false;
-      switch (direction) {
-        case 'n':
-          y -= inc;
-          if (y < 0)
-            y = 25;
-          break;
-        case 'e':
-          x += inc;
-          if (x > 80)
-            x = 0;
-          break;
-        case 's':
-          y += inc;
-          if (y > 25)
-            y = 0;
-          break;
-        case 'w':
-          x -= inc;
-          if (x < 0)
-            x = 80;
-          break;
+      if (running) {
+        let inc = bridge ? 2 : 1;
+        bridge = false;
+        switch (direction) {
+          case 'n':
+            y -= inc;
+            if (y < 0)
+              y = 25;
+            break;
+          case 'e':
+            x += inc;
+            if (x > 80)
+              x = 0;
+            break;
+          case 's':
+            y += inc;
+            if (y > 25)
+              y = 0;
+            break;
+          case 'w':
+            x -= inc;
+            if (x < 0)
+              x = 80;
+            break;
+        }
+        if (typeof opts.step === 'function')
+          return opts.step(runtimeLoop);
       }
     }
   }
 
-  runtimeLoop();
+  return runtimeLoop();
 }
 
 module.exports = befunge;
