@@ -2,9 +2,14 @@
   "name": "befunge",
   "version": "0.0.2",
   "description": "Befunge-93 interpreter",
-  "main": "befunge.js",
+  "browser": "dist/befunge.min.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --env.prod",
+    "build-dev": "webpack --env.dev",
+    "watch": "webpack --watch --env.dev",
+    "watch-minify": "webpack --watch --env.prod"
   },
   "repository": {
     "type": "git",
@@ -27,6 +32,9 @@
   },
   "bin": "./cli.js",
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
     "webpack": "^3.11.0"
   }
 }
