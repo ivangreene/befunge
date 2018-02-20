@@ -1,5 +1,14 @@
-var Befunge =
-/******/ (function(modules) { // webpackBootstrap
+(function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory();
+	else if(typeof define === 'function' && define.amd)
+		define("Befunge", [], factory);
+	else if(typeof exports === 'object')
+		exports["Befunge"] = factory();
+	else
+		root["Befunge"] = factory();
+})(typeof self !== 'undefined' ? self : this, function() {
+return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 /******/
@@ -5031,228 +5040,288 @@ function done(stream, er, data) {
 "use strict";
 
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 var split = __webpack_require__(18);
 
-function randomDirection() {
-  var directions = 'nesw';
-  return directions[Math.floor(Math.random() * 4)];
-}
+var Stack = function () {
+  function Stack(cb) {
+    _classCallCheck(this, Stack);
 
-function befunge(prog, rs, ws, opts) {
-  opts = opts || {};
+    this.cb = cb || function () {};
+    this._stack = [];
+  }
 
-  if (typeof opts.parsed !== 'function') opts.parsed = function () {};
-  if (typeof opts.position !== 'function') opts.position = function () {};
-  if (typeof opts.stack !== 'function') opts.stack = function () {};
-  //  if (typeof opts.step !== 'function')
-  //    opts.step = (next) => next();
-
-  var code = prog.split('\n').map(function (line) {
-    return line.split('');
-  });
-
-  opts.parsed(code);
-
-  var stack = {
-    pop: function pop(send) {
-      var popped = _stack.pop() || 0;
-      if (!send) opts.stack(_stack);
+  _createClass(Stack, [{
+    key: 'pop',
+    value: function pop(noSend) {
+      var popped = this._stack.pop() || 0;
+      if (!noSend) this.cb(this._stack);
       return popped;
-    },
-    push: function push(item, send) {
-      _stack.push(item);
-      if (!send) opts.stack(_stack);
-    },
-    swap: function swap() {
-      var one = stack.pop(true);
-      var two = stack.pop(true);
-      _stack.push(one, two);
-      opts.stack(_stack);
-    },
-    dup: function dup() {
-      var item = stack.pop(true);
-      _stack.push(item);
-      _stack.push(item);
-      opts.stack(_stack);
     }
-  };
+  }, {
+    key: 'push',
+    value: function push(item, noSend) {
+      this._stack.push(item);
+      if (!noSend) this.cb(this._stack);
+    }
+  }, {
+    key: 'swap',
+    value: function swap() {
+      var one = this.pop(true);
+      var two = this.pop(true);
+      this._stack.push(one, two);
+      this.cb(this._stack);
+    }
+  }, {
+    key: 'dup',
+    value: function dup() {
+      var item = this.pop(true);
+      this._stack.push(item);
+      this._stack.push(item);
+      this.cb(this._stack);
+    }
+  }, {
+    key: 'empty',
+    value: function empty() {
+      this._stack = [];
+    }
+  }]);
 
-  var readint = false,
-      readchar = false,
-      paused = false;
+  return Stack;
+}();
 
-  rs.pipe(split()).on('data', function (line) {
-    if (readint) stack.push(parseInt(line) || 0);else if (readchar) stack.push((line || ' ').charCodeAt(0));else return;
-    paused = false;
-    readint = false;
-    readchar = false;
-    return runtimeLoop();
-  });
+module.exports = function () {
+  function Befunge(rs, ws, opts) {
+    var _this = this;
 
-  function codeAt(x, y) {
-    return (code[y] || [])[x] || '';
+    _classCallCheck(this, Befunge);
+
+    this.rs = rs;
+    this.ws = ws;
+    this.opts = opts || {};
+    if (typeof this.opts.parsed !== 'function') this.opts.parsed = function () {};
+    if (typeof this.opts.position !== 'function') this.opts.position = function () {};
+    if (typeof this.opts.stack !== 'function') this.opts.stack = function () {};
+    if (typeof this.opts.done !== 'function') this.opts.done = function () {};
+    this.stack = new Stack(this.opts.stack);
+    this.code = [];
+    this.readint = false;
+    this.readchar = false;
+    this.paused = false;
+    this.direction = 'e';
+    this.running = false;
+    this.x = 0;
+    this.y = 0;
+    this.stringMode = false;
+    this.bridge = false;
+    this.rs.pipe(split()).on('data', function (line) {
+      if (_this.readint) _this.stack.push(parseInt(line) || 0);else if (_this.readchar) _this.stack.push((line || ' ').charCodeAt(0));else return;
+      _this.paused = false;
+      _this.readint = false;
+      _this.readchar = false;
+      return _this.runtimeLoop();
+    });
   }
 
-  function putCode(x, y, v) {
-    code[y] = code[y] || [];
-    code[y][x] = String.fromCharCode(v);
-    opts.parsed(code);
-  }
+  _createClass(Befunge, [{
+    key: 'codeAt',
+    value: function codeAt(x, y) {
+      return (this.code[y] || [])[x] || '';
+    }
+  }, {
+    key: 'putCode',
+    value: function putCode(x, y, v) {
+      this.code[y] = this.code[y] || [];
+      this.code[y][x] = String.fromCharCode(v);
+      this.opts.parsed(this.code);
+    }
+  }, {
+    key: 'parse',
+    value: function parse(program) {
+      return program.split('\n').map(function (line) {
+        return line.split('');
+      });
+    }
+  }, {
+    key: 'load',
+    value: function load(program) {
+      this.code = this.parse(program);
+      this.opts.parsed(this.code);
+      this.stack.empty();
+      this.running = false;
+      this.x = 0;
+      this.y = 0;
+      return this.code;
+    }
+  }, {
+    key: 'run',
+    value: function run() {
+      this.running = true;
+      return this.runtimeLoop();
+    }
+  }, {
+    key: 'randomDirection',
+    value: function randomDirection() {
+      var directions = 'nesw';
+      return directions[Math.floor(Math.random() * 4)];
+    }
+  }, {
+    key: 'runtimeLoop',
+    value: function runtimeLoop() {
+      var _this2 = this;
 
-  var direction = 'e',
-      running = true,
-      x = 0,
-      y = 0,
-      _stack = [],
-      stringMode = false,
-      bridge = false;
-
-  var one = void 0,
-      two = void 0;
-
-  var runtimeLoop = function runtimeLoop() {
-    while (running && !paused) {
-      // if (running && !paused) {
-      opts.position(x, y);
-      if (stringMode) {
-        if (codeAt(x, y) === '"') {
-          stringMode = false;
+      var one = void 0,
+          two = void 0,
+          gx = void 0,
+          gy = void 0;
+      while (this.running && !this.paused) {
+        this.opts.position(this.x, this.y);
+        if (this.stringMode) {
+          if (this.codeAt(this.x, this.y) === '"') {
+            this.stringMode = false;
+          } else {
+            if (this.codeAt(this.x, this.y) !== '') this.stack.push(this.codeAt(this.x, this.y).charCodeAt(0));
+          }
         } else {
-          if (codeAt(x, y) !== '') stack.push(codeAt(x, y).charCodeAt(0));
+          switch (this.codeAt(this.x, this.y)) {
+            case '0':case '1':case '2':case '3':case '4':case '5':
+            case '6':case '7':case '8':case '9':
+              this.stack.push(parseInt(this.codeAt(this.x, this.y), 10));
+              break;
+            case '+':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(one + two);
+              break;
+            case '-':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(two - one);
+              break;
+            case '*':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(one * two);
+              break;
+            case '/':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(parseInt(two / one));
+              break;
+            case '%':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(two % one);
+              break;
+            case '!':
+              this.stack.push(this.stack.pop() ? 0 : 1);
+              break;
+            case '`':
+              one = this.stack.pop(), two = this.stack.pop();
+              this.stack.push(two > one ? 1 : 0);
+              break;
+            case '>':
+              this.direction = 'e';
+              break;
+            case '<':
+              this.direction = 'w';
+              break;
+            case '^':
+              this.direction = 'n';
+              break;
+            case 'v':
+              this.direction = 's';
+              break;
+            case '?':
+              this.direction = this.randomDirection();
+              break;
+            case '_':
+              this.direction = this.stack.pop() ? 'w' : 'e';
+              break;
+            case '|':
+              this.direction = this.stack.pop() ? 'n' : 's';
+              break;
+            case '"':
+              this.stringMode = !this.stringMode;
+              break;
+            case ':':
+              this.stack.dup();
+              break;
+            case '\\':
+              this.stack.swap();
+              break;
+            case '$':
+              this.stack.pop();
+              break;
+            case '.':
+              this.ws.write('' + this.stack.pop() + ' ');
+              break;
+            case ',':
+              this.ws.write(String.fromCharCode(this.stack.pop()));
+              break;
+            case '#':
+              this.bridge = true;
+              break;
+            case '@':
+              this.running = false;
+              this.opts.done();
+              if (!this.opts.wsNoDestroy) {
+                this.ws.destroy();
+              }
+              if (!this.opts.rsNoDestroy) {
+                this.rs.end();
+              }
+              //break rtLoop;
+              break;
+            case 'g':
+              gy = this.stack.pop();
+              gx = this.stack.pop();
+              this.stack.push((this.codeAt(gx, gy) || ' ').charCodeAt(0));
+              break;
+            case 'p':
+              gy = this.stack.pop();
+              gx = this.stack.pop();
+              this.putCode(gx, gy, this.stack.pop());
+              break;
+            case '&':
+              this.readint = true;
+              this.paused = true;
+              break;
+            case '~':
+              this.readchar = true;
+              this.paused = true;
+              break;
+          }
         }
-      } else {
-        switch (codeAt(x, y)) {
-          case '0':case '1':case '2':case '3':case '4':case '5':
-          case '6':case '7':case '8':case '9':
-            stack.push(parseInt(codeAt(x, y)));
-            break;
-          case '+':
-            one = stack.pop(), two = stack.pop();
-            stack.push(one + two);
-            break;
-          case '-':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two - one);
-            break;
-          case '*':
-            one = stack.pop(), two = stack.pop();
-            stack.push(one * two);
-            break;
-          case '/':
-            one = stack.pop(), two = stack.pop();
-            stack.push(parseInt(two / one));
-            break;
-          case '%':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two % one);
-            break;
-          case '!':
-            stack.push(stack.pop() ? 0 : 1);
-            break;
-          case '`':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two > one ? 1 : 0);
-            break;
-          case '>':
-            direction = 'e';
-            break;
-          case '<':
-            direction = 'w';
-            break;
-          case '^':
-            direction = 'n';
-            break;
-          case 'v':
-            direction = 's';
-            break;
-          case '?':
-            direction = randomDirection();
-            break;
-          case '_':
-            direction = stack.pop() ? 'w' : 'e';
-            break;
-          case '|':
-            direction = stack.pop() ? 'n' : 's';
-            break;
-          case '"':
-            stringMode = !stringMode;
-            break;
-          case ':':
-            stack.dup();
-            break;
-          case '\\':
-            stack.swap();
-            break;
-          case '$':
-            stack.pop();
-            break;
-          case '.':
-            ws.write('' + stack.pop() + ' ');
-            break;
-          case ',':
-            ws.write(String.fromCharCode(stack.pop()));
-            break;
-          case '#':
-            bridge = true;
-            break;
-          case '@':
-            running = false;
-            if (!opts.noDestroy) {
-              ws.destroy();
-            }
-            rs.end();
-            //break rtLoop;
-            break;
-          case 'g':
-            gy = stack.pop();
-            gx = stack.pop();
-            stack.push((codeAt(gx, gy) || ' ').charCodeAt(0));
-            break;
-          case 'p':
-            gy = stack.pop();
-            gx = stack.pop();
-            putCode(gx, gy, stack.pop());
-            break;
-          case '&':
-            readint = true;
-            paused = true;
-            break;
-          case '~':
-            readchar = true;
-            paused = true;
-            break;
+        if (this.running) {
+          var inc = this.bridge ? 2 : 1;
+          this.bridge = false;
+          switch (this.direction) {
+            case 'n':
+              this.y -= inc;
+              if (this.y < 0) this.y = 25;
+              break;
+            case 'e':
+              this.x += inc;
+              if (this.x > 80) this.x = 0;
+              break;
+            case 's':
+              this.y += inc;
+              if (this.y > 25) this.y = 0;
+              break;
+            case 'w':
+              this.x -= inc;
+              if (this.x < 0) this.x = 80;
+              break;
+          }
+          if (typeof this.opts.step === 'function') return this.opts.step(function () {
+            return _this2.runtimeLoop();
+          });
         }
-      }
-      if (running) {
-        var inc = bridge ? 2 : 1;
-        bridge = false;
-        switch (direction) {
-          case 'n':
-            y -= inc;
-            if (y < 0) y = 25;
-            break;
-          case 'e':
-            x += inc;
-            if (x > 80) x = 0;
-            break;
-          case 's':
-            y += inc;
-            if (y > 25) y = 0;
-            break;
-          case 'w':
-            x -= inc;
-            if (x < 0) x = 80;
-            break;
-        }
-        if (typeof opts.step === 'function') return opts.step(runtimeLoop);
       }
     }
-  };
+  }]);
 
-  return runtimeLoop();
-}
-
-module.exports = befunge;
+  return Befunge;
+}();
 
 /***/ }),
 /* 18 */
@@ -6299,3 +6368,4 @@ module.exports = __webpack_require__(8).PassThrough;
 
 /***/ })
 /******/ ]);
+});

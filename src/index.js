@@ -1,233 +1,260 @@
-let split = require('split');
+var split = require('split');
 
-function randomDirection() {
-  let directions = 'nesw';
-  return directions[Math.floor(Math.random() * 4)];
+class Stack {
+  constructor(cb) {
+    this.cb = cb || (() => {});
+    this._stack = [];
+  }
+
+  pop(noSend) {
+    let popped = this._stack.pop() || 0;
+    if (!noSend)
+      this.cb(this._stack);
+    return popped;
+  }
+
+  push(item, noSend) {
+    this._stack.push(item);
+    if (!noSend)
+      this.cb(this._stack);
+  }
+
+  swap() {
+    let one = this.pop(true);
+    let two = this.pop(true);
+    this._stack.push(one, two);
+    this.cb(this._stack);
+  }
+
+  dup() {
+    let item = this.pop(true);
+    this._stack.push(item);
+    this._stack.push(item);
+    this.cb(this._stack);
+  }
+
+  empty() {
+    this._stack = [];
+  }
 }
 
-function befunge(prog, rs, ws, opts) {
-  opts = opts || {};
-
-  if (typeof opts.parsed !== 'function')
-    opts.parsed = () => {};
-  if (typeof opts.position !== 'function')
-    opts.position = () => {};
-  if (typeof opts.stack !== 'function')
-    opts.stack = () => {};
-//  if (typeof opts.step !== 'function')
-//    opts.step = (next) => next();
-
-  let code = prog.split('\n').map(line => line.split(''));
-
-  opts.parsed(code);
-
-  let stack = {
-    pop(send) {
-      let popped = _stack.pop() || 0;
-      if (!send)
-        opts.stack(_stack);
-      return popped;
-    },
-    push(item, send) {
-      _stack.push(item);
-      if (!send)
-        opts.stack(_stack);
-    },
-    swap() {
-      let one = stack.pop(true);
-      let two = stack.pop(true);
-      _stack.push(one, two);
-      opts.stack(_stack);
-    },
-    dup() {
-      let item = stack.pop(true);
-      _stack.push(item);
-      _stack.push(item);
-      opts.stack(_stack);
-    }
-  };
-
-  let readint = false, readchar = false, paused = false;
-
-  rs.pipe(split()).on('data', (line) => {
-    if (readint)
-      stack.push(parseInt(line) || 0);
-    else if (readchar)
-      stack.push((line || ' ').charCodeAt(0));
-    else
-      return;
-    paused = false;
-    readint = false;
-    readchar = false;
-    return runtimeLoop();
-  });
-
-  function codeAt(x, y) {
-    return (code[y] || [])[x] || '';
+module.exports = class Befunge {
+  constructor(rs, ws, opts) {
+    this.rs = rs;
+    this.ws = ws;
+    this.opts = opts || {};
+    if (typeof this.opts.parsed !== 'function')
+      this.opts.parsed = () => {};
+    if (typeof this.opts.position !== 'function')
+      this.opts.position = () => {};
+    if (typeof this.opts.stack !== 'function')
+      this.opts.stack = () => {};
+    if (typeof this.opts.done !== 'function')
+      this.opts.done = () => {};
+    this.stack = new Stack(this.opts.stack);
+    this.code = [];
+    this.readint = false;
+    this.readchar = false;
+    this.paused = false;
+    this.direction = 'e';
+    this.running = false;
+    this.x = 0;
+    this.y = 0;
+    this.stringMode = false;
+    this.bridge = false;
+    this.rs.pipe(split()).on('data', (line) => {
+      if (this.readint)
+        this.stack.push(parseInt(line) || 0);
+      else if (this.readchar)
+        this.stack.push((line || ' ').charCodeAt(0));
+      else
+        return;
+      this.paused = false;
+      this.readint = false;
+      this.readchar = false;
+      return this.runtimeLoop();
+    });
   }
 
-  function putCode(x, y, v) {
-    code[y] = code[y] || [];
-    code[y][x] = String.fromCharCode(v);
-    opts.parsed(code);
+  codeAt(x, y) {
+    return (this.code[y] || [])[x] || '';
   }
 
-  let direction = 'e',
-    running = true,
-    x = 0,
-    y = 0,
-    _stack = [],
-    stringMode = false,
-    bridge = false;
+  putCode(x, y, v) {
+    this.code[y] = this.code[y] || [];
+    this.code[y][x] = String.fromCharCode(v);
+    this.opts.parsed(this.code);
+  }
 
-  let one, two;
+  parse(program) {
+    return program.split('\n').map(line => line.split(''));
+  }
 
-  let runtimeLoop = () => {
-    while (running && !paused) {
-    // if (running && !paused) {
-      opts.position(x, y);
-      if (stringMode) {
-        if (codeAt(x, y) === '"') {
-          stringMode = false;
+  load(program) {
+    this.code = this.parse(program);
+    this.opts.parsed(this.code);
+    this.stack.empty();
+    this.running = false;
+    this.x = 0;
+    this.y = 0;
+    return this.code;
+  }
+
+  run() {
+    this.running = true;
+    return this.runtimeLoop();
+  }
+
+  randomDirection() {
+    let directions = 'nesw';
+    return directions[Math.floor(Math.random() * 4)];
+  }
+
+  runtimeLoop() {
+    let one, two, gx, gy;
+    while (this.running && !this.paused) {
+      this.opts.position(this.x, this.y);
+      if (this.stringMode) {
+        if (this.codeAt(this.x, this.y) === '"') {
+          this.stringMode = false;
         } else {
-          if (codeAt(x, y) !== '')
-            stack.push(codeAt(x, y).charCodeAt(0));
+          if (this.codeAt(this.x, this.y) !== '')
+            this.stack.push(this.codeAt(this.x, this.y).charCodeAt(0));
         }
       } else {
-        switch (codeAt(x, y)) {
+        switch (this.codeAt(this.x, this.y)) {
           case '0': case '1': case '2': case '3': case '4': case '5':
           case '6': case '7': case '8': case '9':
-            stack.push(parseInt(codeAt(x, y)));
+            this.stack.push(parseInt(this.codeAt(this.x, this.y), 10));
             break;
           case '+':
-            one = stack.pop(), two = stack.pop();
-            stack.push(one + two);
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(one + two);
             break;
           case '-':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two - one);
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(two - one);
             break;
           case '*':
-            one = stack.pop(), two = stack.pop();
-            stack.push(one * two);
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(one * two);
             break;
           case '/':
-            one = stack.pop(), two = stack.pop();
-            stack.push(parseInt(two / one));
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(parseInt(two / one));
             break;
           case '%':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two % one);
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(two % one);
             break;
           case '!':
-            stack.push(stack.pop() ? 0 : 1);
+            this.stack.push(this.stack.pop() ? 0 : 1);
             break;
           case '`':
-            one = stack.pop(), two = stack.pop();
-            stack.push(two > one ? 1 : 0);
+            one = this.stack.pop(), two = this.stack.pop();
+            this.stack.push(two > one ? 1 : 0);
             break;
           case '>':
-            direction = 'e';
+            this.direction = 'e';
             break;
           case '<':
-            direction = 'w';
+            this.direction = 'w';
             break;
           case '^':
-            direction = 'n';
+            this.direction = 'n';
             break;
           case 'v':
-            direction = 's';
+            this.direction = 's';
             break;
           case '?':
-            direction = randomDirection();
+            this.direction = this.randomDirection();
             break;
           case '_':
-            direction = stack.pop() ? 'w' : 'e';
+            this.direction = this.stack.pop() ? 'w' : 'e';
             break;
           case '|':
-            direction = stack.pop() ? 'n' : 's';
+            this.direction = this.stack.pop() ? 'n' : 's';
             break;
           case '"':
-            stringMode = !stringMode;
+            this.stringMode = !this.stringMode;
             break;
           case ':':
-            stack.dup();
+            this.stack.dup();
             break;
           case '\\':
-            stack.swap();
+            this.stack.swap();
             break;
           case '$':
-            stack.pop();
+            this.stack.pop();
             break;
           case '.':
-            ws.write('' + stack.pop() + ' ');
+            this.ws.write('' + this.stack.pop() + ' ');
             break;
           case ',':
-            ws.write(String.fromCharCode(stack.pop()));
+            this.ws.write(String.fromCharCode(this.stack.pop()));
             break;
           case '#':
-            bridge = true;
+            this.bridge = true;
             break;
           case '@':
-            running = false;
-            if (!opts.noDestroy) {
-              ws.destroy();
+            this.running = false;
+            this.opts.done();
+            if (!this.opts.wsNoDestroy) {
+              this.ws.destroy();
             }
-            rs.end();
+            if (!this.opts.rsNoDestroy) {
+              this.rs.end();
+            }
             //break rtLoop;
             break;
           case 'g':
-            gy = stack.pop();
-            gx = stack.pop();
-            stack.push((codeAt(gx, gy) || ' ').charCodeAt(0));
+            gy = this.stack.pop();
+            gx = this.stack.pop();
+            this.stack.push((this.codeAt(gx, gy) || ' ').charCodeAt(0));
             break;
           case 'p':
-            gy = stack.pop();
-            gx = stack.pop();
-            putCode(gx, gy, stack.pop());
+            gy = this.stack.pop();
+            gx = this.stack.pop();
+            this.putCode(gx, gy, this.stack.pop());
             break;
           case '&':
-            readint = true;
-            paused = true;
+            this.readint = true;
+            this.paused = true;
             break;
           case '~':
-            readchar = true;
-            paused = true;
+            this.readchar = true;
+            this.paused = true;
             break;
         }
       }
-      if (running) {
-        let inc = bridge ? 2 : 1;
-        bridge = false;
-        switch (direction) {
+      if (this.running) {
+        let inc = this.bridge ? 2 : 1;
+        this.bridge = false;
+        switch (this.direction) {
           case 'n':
-            y -= inc;
-            if (y < 0)
-              y = 25;
+            this.y -= inc;
+            if (this.y < 0)
+              this.y = 25;
             break;
           case 'e':
-            x += inc;
-            if (x > 80)
-              x = 0;
+            this.x += inc;
+            if (this.x > 80)
+              this.x = 0;
             break;
           case 's':
-            y += inc;
-            if (y > 25)
-              y = 0;
+            this.y += inc;
+            if (this.y > 25)
+              this.y = 0;
             break;
           case 'w':
-            x -= inc;
-            if (x < 0)
-              x = 80;
+            this.x -= inc;
+            if (this.x < 0)
+              this.x = 80;
             break;
         }
-        if (typeof opts.step === 'function')
-          return opts.step(runtimeLoop);
+        if (typeof this.opts.step === 'function')
+          return this.opts.step(() => this.runtimeLoop());
       }
     }
   }
-
-  return runtimeLoop();
 }
-
-module.exports = befunge;

@@ -7,7 +7,9 @@ module.exports = function(env) {
     output: {
       filename: env.dev ? 'befunge.js' : 'befunge.min.js',
       path: path.resolve(__dirname, 'dist'),
-      library: 'Befunge'
+      library: 'Befunge',
+      libraryTarget: 'umd',
+      umdNamedDefine: true
     },
     module: {
       loaders: [
