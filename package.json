@@ -25,5 +25,8 @@
   "dependencies": {
     "split": "^1.0.1"
   },
-  "bin": "./cli.js"
+  "bin": "./cli.js",
+  "devDependencies": {
+    "webpack": "^3.11.0"
+  }
 }
