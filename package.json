@@ -1,6 +1,6 @@
 {
   "name": "befunge",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Befunge-93 interpreter",
   "browser": "dist/befunge.min.js",
   "main": "src/index.js",
