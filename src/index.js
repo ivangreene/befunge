@@ -35,6 +35,7 @@ class Stack {
 
   empty() {
     this._stack = [];
+    this.cb(this._stack);
   }
 }
 
@@ -49,19 +50,12 @@ module.exports = class Befunge {
       this.opts.position = () => {};
     if (typeof this.opts.stack !== 'function')
       this.opts.stack = () => {};
+    if (typeof this.opts.read !== 'function')
+      this.opts.read = () => {};
     if (typeof this.opts.done !== 'function')
       this.opts.done = () => {};
     this.stack = new Stack(this.opts.stack);
-    this.code = [];
-    this.readint = false;
-    this.readchar = false;
-    this.paused = false;
-    this.direction = 'e';
-    this.running = false;
-    this.x = 0;
-    this.y = 0;
-    this.stringMode = false;
-    this.bridge = false;
+    this.source = '';
     this.rs.pipe(split()).on('data', (line) => {
       if (this.readint)
         this.stack.push(parseInt(line) || 0);
@@ -74,6 +68,7 @@ module.exports = class Befunge {
       this.readchar = false;
       return this.runtimeLoop();
     });
+    this.reset();
   }
 
   codeAt(x, y) {
@@ -91,18 +86,30 @@ module.exports = class Befunge {
   }
 
   load(program) {
-    this.code = this.parse(program);
-    this.opts.parsed(this.code);
-    this.stack.empty();
-    this.running = false;
-    this.x = 0;
-    this.y = 0;
+    this.source = program;
+    this.reset();
     return this.code;
   }
 
   run() {
     this.running = true;
     return this.runtimeLoop();
+  }
+
+  reset() {
+    this.code = this.parse(this.source);
+    this.opts.parsed(this.code);
+    this.stack.empty();
+    this.x = 0;
+    this.y = 0;
+    this.direction = 'e';
+    this.readint = false;
+    this.readchar = false;
+    this.paused = false;
+    this.running = false;
+    this.stringMode = false;
+    this.bridge = false;
+    this.opts.position(this.x, this.y);
   }
 
   randomDirection() {
@@ -220,10 +227,12 @@ module.exports = class Befunge {
           case '&':
             this.readint = true;
             this.paused = true;
+            this.opts.read('int');
             break;
           case '~':
             this.readchar = true;
             this.paused = true;
+            this.opts.read('char');
             break;
         }
       }

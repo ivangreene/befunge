@@ -5087,6 +5087,7 @@ var Stack = function () {
     key: 'empty',
     value: function empty() {
       this._stack = [];
+      this.cb(this._stack);
     }
   }]);
 
@@ -5105,18 +5106,10 @@ module.exports = function () {
     if (typeof this.opts.parsed !== 'function') this.opts.parsed = function () {};
     if (typeof this.opts.position !== 'function') this.opts.position = function () {};
     if (typeof this.opts.stack !== 'function') this.opts.stack = function () {};
+    if (typeof this.opts.read !== 'function') this.opts.read = function () {};
     if (typeof this.opts.done !== 'function') this.opts.done = function () {};
     this.stack = new Stack(this.opts.stack);
-    this.code = [];
-    this.readint = false;
-    this.readchar = false;
-    this.paused = false;
-    this.direction = 'e';
-    this.running = false;
-    this.x = 0;
-    this.y = 0;
-    this.stringMode = false;
-    this.bridge = false;
+    this.source = '';
     this.rs.pipe(split()).on('data', function (line) {
       if (_this.readint) _this.stack.push(parseInt(line) || 0);else if (_this.readchar) _this.stack.push((line || ' ').charCodeAt(0));else return;
       _this.paused = false;
@@ -5124,6 +5117,7 @@ module.exports = function () {
       _this.readchar = false;
       return _this.runtimeLoop();
     });
+    this.reset();
   }
 
   _createClass(Befunge, [{
@@ -5148,12 +5142,8 @@ module.exports = function () {
   }, {
     key: 'load',
     value: function load(program) {
-      this.code = this.parse(program);
-      this.opts.parsed(this.code);
-      this.stack.empty();
-      this.running = false;
-      this.x = 0;
-      this.y = 0;
+      this.source = program;
+      this.reset();
       return this.code;
     }
   }, {
@@ -5161,6 +5151,23 @@ module.exports = function () {
     value: function run() {
       this.running = true;
       return this.runtimeLoop();
+    }
+  }, {
+    key: 'reset',
+    value: function reset() {
+      this.code = this.parse(this.source);
+      this.opts.parsed(this.code);
+      this.stack.empty();
+      this.x = 0;
+      this.y = 0;
+      this.direction = 'e';
+      this.readint = false;
+      this.readchar = false;
+      this.paused = false;
+      this.running = false;
+      this.stringMode = false;
+      this.bridge = false;
+      this.opts.position(this.x, this.y);
     }
   }, {
     key: 'randomDirection',
@@ -5284,10 +5291,12 @@ module.exports = function () {
             case '&':
               this.readint = true;
               this.paused = true;
+              this.opts.read('int');
               break;
             case '~':
               this.readchar = true;
               this.paused = true;
+              this.opts.read('char');
               break;
           }
         }
